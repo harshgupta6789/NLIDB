@@ -1,10 +1,10 @@
 import numpy as np
 import pandas as pd
-import stanfordnlp
+import stanza
 
 # Create A Text Pipeline
-# stanfordnlp.download('hi')
-nlp = stanfordnlp.Pipeline(lang="hi")
+# stanza.download('hi')
+nlp = stanza.Pipeline(lang="hi")
 
 
 # extract lemma
@@ -82,7 +82,7 @@ def syntactic_analyser(query):
     dependencies = list()
     dep_edge = hindi_doc_lemma.sentences[0].my_dependencies()
     for dep in dep_edge:
-        dependencies.append((dep[2].text, dep[0].index, dep[1]))
+        dependencies.append((dep[2].text, dep[0].id, dep[1]))
 
     # map to karaka relations
     return {
