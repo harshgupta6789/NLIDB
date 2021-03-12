@@ -86,6 +86,7 @@ def syntactic_analyser(query):
 
     # map to karaka relations
     return {
+        "query" : query,
         "tokens": tokens,
         "query_lemma": query_lemma,
         "pos": pos,
