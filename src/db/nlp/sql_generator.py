@@ -1,5 +1,10 @@
 import sqlite3
 from google_trans_new import google_translator
+import nltk
+from nltk.corpus import wordnet
+
+
+# nltk.download('wordnet')
 
 
 def getDatabaseMetaData(conn):
@@ -51,8 +56,56 @@ def select(table, columns, conn):
     result = cursor.fetchall()
     return result
 
+
+def getTable(sql_tables, english_table):
+    for i in range(len(sql_tables)):
+        if sql_tables[i].lower() == english_table.lower().strip():
+            return sql_tables[i]
+
+    # check for synonyms
+    syn = list()
+    for synset in wordnet.synsets(english_table.lower().strip()):
+        for lemma in synset.lemmas():
+            for synonym in lemma.name().split('_'):
+                syn.append(synonym)
+    for i in range(len(sql_tables)):
+        for synonym in syn:
+            if sql_tables[i].lower() == synonym.lower().strip():
+                return sql_tables[i]
+
+    return None
+
+
+def getColumns(sql_columns, semantic_columns):
+    translator = google_translator()
+    columns = []
+    for i in range(len(semantic_columns)):
+        columns.append(translator.translate(semantic_columns[i], lang_src='hindi'))
+
+    result = []
+
+    for column in columns:
+        for i in range(len(sql_columns)):
+            if sql_columns[i].lower() == column.lower().strip():
+                result.append(sql_columns[i])
+                break
+        else:
+            # check for synonyms
+            syn = list()
+            for synset in wordnet.synsets(column.lower().strip()):
+                for lemma in synset.lemmas():
+                    for synonym in lemma.name().split('_'):
+                        syn.append(synonym)
+            for synonym in syn:
+                for i in range(len(sql_columns)):
+                    if sql_columns[i].lower() == synonym.lower().strip():
+                        result.append(sql_columns[i])
+                        break
+    return result
+
+
 def sql_generator_func(semantic_result):
-    print(semantic_result)
+    # get database metadata
     conn = sqlite3.connect(":memory:")
     meta_data = getDatabaseMetaData(conn)
     conn.close()
@@ -60,39 +113,28 @@ def sql_generator_func(semantic_result):
     if semantic_result["type"] != "select":
         return "to be implemented"
 
+    # find matching table
     hindi_table = semantic_result["table"]
-
     translator = google_translator()
-    english_table = translator.translate('छात्र', lang_src='hindi')
+    english_table = translator.translate(hindi_table, lang_src='hindi')
 
-    table = None
-
-    for i in range(len(meta_data["tables"])):
-        if meta_data["tables"][i].lower() == english_table.lower().strip():
-            table = meta_data["tables"][i]
-            break
-    else:
-        pass
+    table = getTable(meta_data["tables"], english_table)
 
     if table == None:
         return "could not find any matching data"
 
-    columns = []
-    for i in range(len(semantic_result["columns"])):
-        semantic_result["columns"][i] = translator.translate(semantic_result["columns"][i], lang_src='hindi')
+    # find matching columns
+    columns = getColumns(meta_data[table], semantic_result["columns"])
 
-    for column in semantic_result["columns"]:
-        for i in range(len(meta_data[table])):
-            if meta_data[table][i].lower() == column.lower().strip():
-                columns.append(meta_data[table][i])
-                break
-        else:
-            pass
-    print(columns)
-    print(semantic_result["columns"])
-    if len(columns) == 0:
+    if len(columns) != len(semantic_result["columns"]):
         return "could not find any matching data"
 
+    # run sql query
     conn = sqlite3.connect(":memory:")
     data = select(table, columns, conn)
-    return data
+
+    return {
+        "table": table,
+        "column": columns,
+        "data": data
+    }
