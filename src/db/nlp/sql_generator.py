@@ -1,6 +1,5 @@
 import sqlite3
 from google_trans_new import google_translator
-import nltk
 from nltk.corpus import wordnet
 
 
@@ -27,17 +26,79 @@ def getDatabaseMetaData(conn):
 
     # get column names
     for table in tables:
-        columns = []
+        columns = {}
         cursor.execute("PRAGMA table_info('" + table + "')")
         result = cursor.fetchall()
         for i in range(len(result)):
-            columns.append(result[i][1])
+            temp = result[i][1]
+            columns[temp] = []
+            cursor.execute("SELECT DISTINCT " + temp + " FROM " + table)
+            result2 = cursor.fetchall()
+            for i in range(len(result2)):
+                columns[temp].append(result2[i][0])
         meta_data[table] = columns
 
     return meta_data
 
 
-def select(table, columns, conn):
+def check_tables(synonyms, sql_data):
+    for synonym in synonyms:
+        for table in sql_data["tables"]:
+            if synonym == table.lower().strip():
+                return table
+    return None
+
+
+def check_columns(synonyms, sql_data):
+    for synonym in synonyms:
+        for table in sql_data["tables"]:
+            for column in sql_data[table].keys():
+                if synonym == column.lower().strip():
+                    return column, table
+    return None, None
+
+
+def check_values(synonyms, sql_data):
+    for synonym in synonyms:
+        for table in sql_data["tables"]:
+            for column in sql_data[table].keys():
+                for value in sql_data[table][column]:
+                    if str(value).lower().strip() == synonym:
+                        return value, column, table
+    return None, None, None
+
+
+def select(query_type, semantic_result, meta_data, conn):
+    tables = []
+    columns = {}
+    temp_columns = []
+    where = {}
+    for i in range(len(semantic_result["keywords"])):
+        table = check_tables(semantic_result["keywords"][i], meta_data)
+        # print("check table", table)
+        if table is not None:
+            if table not in tables:
+                tables.append(table)
+            continue
+        column, table = check_columns(semantic_result["keywords"][i], meta_data)
+        # print("check column", column, table)
+        if column is not None:
+            columns[column] = table
+            if table not in tables:
+                tables.append(table)
+            temp_columns.append(column)
+            continue
+        value, column, table = check_values(semantic_result["keywords"][i], meta_data)
+        # print("check value", value, column, table)
+        if value is not None:
+            where[value] = []
+            where[value].append(column)
+            where[value].append(table)
+            if table not in tables:
+                tables.append(table)
+            continue
+        return {"error": "no matching data found"}
+
     cursor = conn.cursor()
 
     # read db from sql file
@@ -46,62 +107,44 @@ def select(table, columns, conn):
     cursor.executescript(sql_as_string)
 
     statement = "SELECT "
-    for column in columns:
-        statement = statement + column + ","
-    statement = statement[:-1] + " FROM "
-    statement = statement + table
-    print(statement)
+    if query_type == "select-count":
+        statement = statement + 'COUNT('
+    if query_type == "select-avg":
+        statement = statement + 'AVG('
+    if query_type == "select-max":
+        statement = statement + 'MAX('
+    if query_type == "select-min":
+        statement = statement + 'MIN('
+    if len(columns.keys()) == 0:
+        statement = statement + "*"
+    else:
+        for column in columns.keys():
+            statement = statement + columns[column] + "." + column + ","
+        statement = statement[:-1]
+    if query_type in ["select-count", "select-avg", "select-min", "select-max"]:
+        statement = statement + ")"
+
+    statement = statement + " FROM "
+
+    for table in tables:
+        statement = statement + table + " NATURAL JOIN "
+    statement = statement[:-13]
+
+    if len(where.keys()) != 0:
+        statement = statement + "WHERE LOWER("
+        for value in where.keys():
+            statement = statement + where[value][1] + "." + where[value][0] + ") LIKE '%" + value + "%' AND"
+        statement = statement[:-4]
 
     cursor.execute(statement)
     result = cursor.fetchall()
-    return result
+    tables = list(tables)
+    if len(temp_columns) == 0:
+        for table in list(tables):
+            for column in meta_data[table].keys():
+                temp_columns.append(column)
 
-
-def getTable(sql_tables, english_table):
-    for i in range(len(sql_tables)):
-        if sql_tables[i].lower() == english_table.lower().strip():
-            return sql_tables[i]
-
-    # check for synonyms
-    syn = list()
-    for synset in wordnet.synsets(english_table.lower().strip()):
-        for lemma in synset.lemmas():
-            for synonym in lemma.name().split('_'):
-                syn.append(synonym)
-    for i in range(len(sql_tables)):
-        for synonym in syn:
-            if sql_tables[i].lower() == synonym.lower().strip():
-                return sql_tables[i]
-
-    return None
-
-
-def getColumns(sql_columns, semantic_columns):
-    translator = google_translator()
-    columns = []
-    for i in range(len(semantic_columns)):
-        columns.append(translator.translate(semantic_columns[i], lang_src='hindi'))
-
-    result = []
-
-    for column in columns:
-        for i in range(len(sql_columns)):
-            if sql_columns[i].lower() == column.lower().strip():
-                result.append(sql_columns[i])
-                break
-        else:
-            # check for synonyms
-            syn = list()
-            for synset in wordnet.synsets(column.lower().strip()):
-                for lemma in synset.lemmas():
-                    for synonym in lemma.name().split('_'):
-                        syn.append(synonym)
-            for synonym in syn:
-                for i in range(len(sql_columns)):
-                    if sql_columns[i].lower() == synonym.lower().strip():
-                        result.append(sql_columns[i])
-                        break
-    return result
+    return list(tables), list(temp_columns), statement, result
 
 
 def sql_generator_func(semantic_result):
@@ -110,31 +153,16 @@ def sql_generator_func(semantic_result):
     meta_data = getDatabaseMetaData(conn)
     conn.close()
 
-    if semantic_result["type"] != "select":
-        return "to be implemented"
-
-    # find matching table
-    hindi_table = semantic_result["table"]
-    translator = google_translator()
-    english_table = translator.translate(hindi_table, lang_src='hindi')
-
-    table = getTable(meta_data["tables"], english_table)
-
-    if table == None:
-        return "could not find any matching data"
-
-    # find matching columns
-    columns = getColumns(meta_data[table], semantic_result["columns"])
-
-    if len(columns) != len(semantic_result["columns"]):
-        return "could not find any matching data"
-
-    # run sql query
+    # get data
     conn = sqlite3.connect(":memory:")
-    data = select(table, columns, conn)
+    tables, columns, statement, result = select(semantic_result["type"], semantic_result, meta_data, conn)
+    is_aggregate = semantic_result["type"] in ["select-count", "select-avg", "select-min", "select-max"]
 
     return {
-        "table": table,
-        "column": columns,
-        "data": data
+        "query": semantic_result["query"],
+        "tables": tables,
+        "columns": columns,
+        "statement": statement,
+        "data": result,
+        "is_aggregate": is_aggregate
     }

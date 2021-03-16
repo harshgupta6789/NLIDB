@@ -1,30 +1,43 @@
+from google_trans_new import google_translator
+from nltk.corpus import wordnet
+
 
 # Workflow
-
 def semantic_analyser(syntactic_result):
-
-    select_list = ["क्या", "क्या है", "कौन", "कौन से"]
+    # query classification
+    select_list = ["क्या", "कौन", "कहाँ", "कब", "कितना"]
     matches = [x for x in select_list if x in syntactic_result["query_lemma"]]
-    if len(matches):
-        is_select = True
+    if len(matches) == 0:
+        return {"error": "to be implemented"}
+
+    if "औसत" in syntactic_result["query_lemma"] or "माध्य" in syntactic_result["query_lemma"]:
+        query_type = "select-avg"
+    elif "कितना" in syntactic_result["query_lemma"]:
+        query_type = "select-count"
     else:
-        is_select = False
+        query_type = "select"
 
-    if not is_select:
-        return "to be implemented"
+    # finding keywords and their synonyms
+    keywords = []
+    for dependency in syntactic_result["dependencies"]:
+        if dependency[2] in ["nmod", "nsubj", "conj", "obj"]:
+            keywords.append(dependency[0])
 
-    table = None
-    columns = []
-
-    for dependency in syntactic_result["dependencies"] :
-        if dependency[2] == "nmod":
-            table = dependency[0]
-        elif dependency[2] == "nsubj" or dependency[2] == "conj":
-            columns.append(dependency[0])
+    for i in range(len(keywords)):
+        translator = google_translator()
+        temp = translator.translate(keywords[i], lang_src='hindi')
+        keywords[i] = [temp.lower().strip()]
+        for synset in wordnet.synsets(temp.lower().strip()):
+            for lemma in synset.lemmas():
+                for synonym in lemma.name().split('_'):
+                    keywords[i].append(synonym.lower().strip())
 
     return {
-        "type": "select",
-        "table": table,
-        "columns": columns,
-        "where": "to be implemented"
+        "query": syntactic_result["query"],
+        "tokens": syntactic_result["tokens"],
+        "query_lemma": syntactic_result["query_lemma"],
+        "pos": syntactic_result["pos"],
+        "dependencies": syntactic_result["dependencies"],
+        "type": query_type,
+        "keywords": keywords,
     }
