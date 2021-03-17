@@ -13,7 +13,7 @@ from .nlp.nlidb import *
 
 import os
 
-os.environ['KMP_DUPLICATE_LIB_OK']='True'
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 
 # Create your views here.
@@ -32,8 +32,8 @@ class DatabaseAPI(APIView):
 
         try:
             result = perform_nlidb(hindi_sentence)
-        except RuntimeError:
-            result = {'error': True}
+        except:
+            result = {'error': "unexpected error occurred"}
 
         return Response(result)
 
