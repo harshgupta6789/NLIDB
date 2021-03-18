@@ -35,6 +35,23 @@ class DatabaseAPI(APIView):
         except:
             result = {'error': "unexpected error occurred"}
 
+        if "error" not in result:
+            for k, v in result.items():
+                if type(result[k]) == str:
+                    result[k] = str(v).encode('utf-8')
+                elif type(result[k]) == bool:
+                    result[k] = result[k]
+                elif type(result[k]) == list:
+                    temp = []
+                    for items in result[k]:
+                        if type(items) == list:
+                            temp2 = []
+                            for item in items:
+                                temp2.append(str(item).encode('utf-8'))
+                            temp.append(temp2)
+                        else:
+                            temp.append(str(items).encode('utf-8'))
+
         return Response(result)
 
     def post(self):
