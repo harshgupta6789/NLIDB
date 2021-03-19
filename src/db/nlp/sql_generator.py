@@ -37,7 +37,6 @@ def getDatabaseMetaData(conn):
             for i in range(len(result2)):
                 columns[temp].append(result2[i][0])
         meta_data[table] = columns
-
     return meta_data
 
 
@@ -74,6 +73,8 @@ def select(query_type, semantic_result, meta_data, conn):
     temp_columns = []
     where = {}
     for i in range(len(semantic_result["keywords"])):
+        if type(semantic_result['keywords'][i]) == str:
+            continue
         table = check_tables(semantic_result["keywords"][i], meta_data)
         # print("check table", table)
         if table is not None:
@@ -86,7 +87,8 @@ def select(query_type, semantic_result, meta_data, conn):
             columns[column] = table
             if table not in tables:
                 tables.append(table)
-            temp_columns.append(column)
+            if column not in temp_columns:
+                temp_columns.append(column)
             continue
         value, column, table = check_values(semantic_result["keywords"][i], meta_data)
         # print("check value", value, column, table)
@@ -97,8 +99,11 @@ def select(query_type, semantic_result, meta_data, conn):
             if table not in tables:
                 tables.append(table)
             continue
-        return {"error": "no matching data found"}
+        # return None
 
+    if len(tables) == 0:
+        return None
+    
     cursor = conn.cursor()
 
     # read db from sql file
@@ -131,18 +136,20 @@ def select(query_type, semantic_result, meta_data, conn):
     statement = statement[:-13]
 
     if len(where.keys()) != 0:
-        statement = statement + "WHERE LOWER("
+        statement = statement + "WHERE "
         for value in where.keys():
-            statement = statement + where[value][1] + "." + where[value][0] + ") LIKE '%" + value + "%' AND"
+            statement = statement + "LOWER(" + where[value][1] + "." + where[value][0] + ") LIKE '%" + value + "%' OR "
         statement = statement[:-4]
 
+    print(statement)
     cursor.execute(statement)
     result = cursor.fetchall()
     tables = list(tables)
     if len(temp_columns) == 0:
         for table in list(tables):
             for column in meta_data[table].keys():
-                temp_columns.append(column)
+                if column not in temp_columns:
+                    temp_columns.append(column)
 
     return list(tables), list(temp_columns), statement, result
 
@@ -155,7 +162,11 @@ def sql_generator_func(semantic_result):
 
     # get data
     conn = sqlite3.connect(":memory:")
-    tables, columns, statement, result = select(semantic_result["type"], semantic_result, meta_data, conn)
+
+    execute = select(semantic_result["type"], semantic_result, meta_data, conn)
+    if execute is None:
+        return {"error": "no matching data found"}
+    tables, columns, statement, result = execute
     is_aggregate = semantic_result["type"] in ["select-count", "select-avg", "select-min", "select-max"]
 
     return {

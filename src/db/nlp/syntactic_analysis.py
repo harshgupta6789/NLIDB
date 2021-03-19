@@ -62,24 +62,24 @@ def extract_pos(doc):
 def syntactic_analyser(query):
     hindi_doc = nlp(query)
 
-    # Tokenization
-    tokens_object = hindi_doc.sentences[0].my_tokens()
-    tokens = list()
-    for token in tokens_object:
-        tokens.append(token.words[0].text)
-
     # Lemmatization
     # call the function on doc
     df, query_lemma = extract_lemma(hindi_doc)
 
     hindi_doc_lemma = nlp(query_lemma)
 
+    # Tokenization
+    tokens_object = hindi_doc_lemma.sentences[0].my_tokens()
+    tokens = list()
+    for token in tokens_object:
+        tokens.append(token.words[0].text)
+
     # POS Tagging
     pos = extract_pos(hindi_doc)
 
     # Print Dependencies
     dependencies = list()
-    dep_edge = hindi_doc_lemma.sentences[0].my_dependencies()
+    dep_edge = hindi_doc.sentences[0].my_dependencies()
     for dep in dep_edge:
         dependencies.append((dep[2].text, dep[0].id, dep[1]))
 

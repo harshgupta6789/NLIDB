@@ -26,7 +26,7 @@ class DatabaseAPI(APIView):
         hindi_sentence = self.request.query_params.get('hindi_sentence')
 
         if hindi_sentence is None:
-            return Response('Invalid parameters')
+            return Response({'error': 'Invalid parameters'})
 
         hindi_sentence = urllib.parse.unquote(hindi_sentence)
 

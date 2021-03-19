@@ -12,6 +12,10 @@ def semantic_analyser(syntactic_result):
 
     if "औसत" in syntactic_result["query_lemma"] or "माध्य" in syntactic_result["query_lemma"]:
         query_type = "select-avg"
+    elif "अधिकतम" in syntactic_result['query_lemma']:
+        query_type = "select-max"
+    elif "न्यूनतम" in syntactic_result['query_lemma']:
+        query_type = "select-min"
     elif "कितना" in syntactic_result["query_lemma"]:
         query_type = "select-count"
     else:
@@ -19,9 +23,10 @@ def semantic_analyser(syntactic_result):
 
     # finding keywords and their synonyms
     keywords = []
-    for dependency in syntactic_result["dependencies"]:
-        if dependency[2] in ["nmod", "nsubj", "conj", "obj"]:
-            keywords.append(dependency[0])
+    for i in range(len(syntactic_result["dependencies"])):
+        if (syntactic_result['dependencies'][i][2] in ["nmod", "nsubj", "conj", "obj", "obl", "root"]): # and (syntactic_result[
+            # 'pos']['pos'][i] != 'PROPN'):
+            keywords.append(syntactic_result['tokens'][i])
 
     for i in range(len(keywords)):
         translator = google_translator()
@@ -31,6 +36,10 @@ def semantic_analyser(syntactic_result):
             for lemma in synset.lemmas():
                 for synonym in lemma.name().split('_'):
                     keywords[i].append(synonym.lower().strip())
+    print(keywords)
+    # for i in range(len(syntactic_result['pos'])):
+    #     if syntactic_result['pos']['pos'][i] == 'PROPN':
+    #         keywords.append(syntactic_result['pos']['word'][i])
 
     return {
         "query": syntactic_result["query"],
