@@ -20,5 +20,5 @@ from db import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('nlphindi/', views.DatabaseAPI.as_view()),
+    path('get-data/', views.DatabaseAPI.as_view()),
 ]

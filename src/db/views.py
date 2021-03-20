@@ -12,6 +12,7 @@ import urllib.parse
 from .nlp.nlidb import *
 
 import os
+from pathlib import Path
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
@@ -23,17 +24,21 @@ class DatabaseAPI(APIView):
     def get(self, request):
         # database = Database.objects.all()
         # serializer = DatabaseSerializer(database, many=True)
-        hindi_sentence = self.request.query_params.get('hindi_sentence')
+        hindi_sentence = self.request.query_params.get('query')
 
         if hindi_sentence is None:
-            return Response({'error': 'Invalid parameters'})
+            return Response({'error': 'Invalid Parameters'})
 
         hindi_sentence = urllib.parse.unquote(hindi_sentence)
+
+        my_path = Path('./database/db.sql')
+        if not my_path.is_file():
+            return Response({"error": "Database does not exists"})
 
         try:
             result = perform_nlidb(hindi_sentence)
         except:
-            result = {'error': "unexpected error occurred"}
+            result = {'error': "Unexpected Error Occurred"}
 
         if "error" not in result:
             for k, v in result.items():
@@ -51,7 +56,6 @@ class DatabaseAPI(APIView):
                             temp.append(temp2)
                         else:
                             temp.append(str(items).encode('utf-8'))
-
         return Response(result)
 
     def post(self):

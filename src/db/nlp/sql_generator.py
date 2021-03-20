@@ -165,7 +165,7 @@ def sql_generator_func(semantic_result):
 
     execute = select(semantic_result["type"], semantic_result, meta_data, conn)
     if execute is None:
-        return {"error": "no matching data found"}
+        return {"error": "No Matching Data Found"}
     tables, columns, statement, result = execute
     is_aggregate = semantic_result["type"] in ["select-count", "select-avg", "select-min", "select-max"]
 
