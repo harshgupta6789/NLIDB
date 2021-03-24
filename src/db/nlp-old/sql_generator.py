@@ -1,6 +1,6 @@
 import sqlite3
+
 from google_trans_new import google_translator
-import nltk
 from nltk.corpus import wordnet
 
 

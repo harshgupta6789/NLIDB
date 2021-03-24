@@ -1,6 +1,6 @@
-from .syntactic_analysis import syntactic_analyser
 from .semantic_analysis import semantic_analyser
 from .sql_generator import sql_generator_func
+from .syntactic_analysis import syntactic_analyser
 
 
 def perform_nlidb(query):

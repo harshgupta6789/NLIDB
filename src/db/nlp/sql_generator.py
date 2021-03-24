@@ -1,6 +1,4 @@
 import sqlite3
-from google_trans_new import google_translator
-from nltk.corpus import wordnet
 
 
 # nltk.download('wordnet')
@@ -34,9 +32,21 @@ def getDatabaseMetaData(conn):
             columns[temp] = []
             cursor.execute("SELECT DISTINCT " + temp + " FROM " + table)
             result2 = cursor.fetchall()
-            for i in range(len(result2)):
-                columns[temp].append(result2[i][0])
+            for j in range(len(result2)):
+                columns[temp].append(result2[j][0])
         meta_data[table] = columns
+
+    ambiguous = set()
+    for table in tables:
+        for column in meta_data[table].keys():
+            if column in tables:
+                ambiguous.add(column)
+            else:
+                for table_temp in tables:
+                    if table_temp != table:
+                        if column in meta_data[table_temp].keys():
+                            ambiguous.add(column)
+    meta_data["ambiguous"] = ambiguous
     return meta_data
 
 
@@ -72,26 +82,31 @@ def select(query_type, semantic_result, meta_data, conn):
     columns = {}
     temp_columns = []
     where = {}
+    ambiguous = []
     for i in range(len(semantic_result["keywords"])):
         if type(semantic_result['keywords'][i]) == str:
             continue
-        table = check_tables(semantic_result["keywords"][i], meta_data)
-        # print("check table", table)
+
+        table = check_tables(semantic_result["keywords"][i][1:], meta_data)
         if table is not None:
             if table not in tables:
                 tables.append(table)
+                if table in meta_data["ambiguous"]:
+                    ambiguous.append(semantic_result["keywords"][i][0])
             continue
-        column, table = check_columns(semantic_result["keywords"][i], meta_data)
-        # print("check column", column, table)
+
+        column, table = check_columns(semantic_result["keywords"][i][1:], meta_data)
         if column is not None:
             columns[column] = table
             if table not in tables:
                 tables.append(table)
             if column not in temp_columns:
                 temp_columns.append(column)
+            if column in meta_data["ambiguous"]:
+                ambiguous.append(semantic_result["keywords"][i][0])
             continue
-        value, column, table = check_values(semantic_result["keywords"][i], meta_data)
-        # print("check value", value, column, table)
+
+        value, column, table = check_values(semantic_result["keywords"][i][1:], meta_data)
         if value is not None:
             where[value] = []
             where[value].append(column)
@@ -103,7 +118,7 @@ def select(query_type, semantic_result, meta_data, conn):
 
     if len(tables) == 0:
         return None
-    
+
     cursor = conn.cursor()
 
     # read db from sql file
@@ -141,7 +156,6 @@ def select(query_type, semantic_result, meta_data, conn):
             statement = statement + "LOWER(" + where[value][1] + "." + where[value][0] + ") LIKE '%" + value + "%' OR "
         statement = statement[:-4]
 
-    print(statement)
     cursor.execute(statement)
     result = cursor.fetchall()
     tables = list(tables)
@@ -151,7 +165,7 @@ def select(query_type, semantic_result, meta_data, conn):
                 if column not in temp_columns:
                     temp_columns.append(column)
 
-    return list(tables), list(temp_columns), statement, result
+    return list(tables), list(temp_columns), statement, result, ambiguous
 
 
 def sql_generator_func(semantic_result):
@@ -166,7 +180,7 @@ def sql_generator_func(semantic_result):
     execute = select(semantic_result["type"], semantic_result, meta_data, conn)
     if execute is None:
         return {"error": "No Matching Data Found"}
-    tables, columns, statement, result = execute
+    tables, columns, statement, result, ambiguous = execute
     is_aggregate = semantic_result["type"] in ["select-count", "select-avg", "select-min", "select-max"]
 
     return {
@@ -175,5 +189,6 @@ def sql_generator_func(semantic_result):
         "columns": columns,
         "statement": statement,
         "data": result,
-        "is_aggregate": is_aggregate
+        "is_aggregate": is_aggregate,
+        "ambiguous": ambiguous
     }

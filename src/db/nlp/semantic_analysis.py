@@ -8,7 +8,7 @@ def semantic_analyser(syntactic_result):
     select_list = ["क्या", "कौन", "कहाँ", "कब", "कितना"]
     matches = [x for x in select_list if x in syntactic_result["query_lemma"]]
     if len(matches) == 0:
-        return {"error": "to be implemented"}
+        return {"error": "To Be Implemented"}
 
     if "औसत" in syntactic_result["query_lemma"] or "माध्य" in syntactic_result["query_lemma"]:
         query_type = "select-avg"
@@ -24,19 +24,22 @@ def semantic_analyser(syntactic_result):
     # finding keywords and their synonyms
     keywords = []
     for i in range(len(syntactic_result["dependencies"])):
-        if (syntactic_result['dependencies'][i][2] in ["nmod", "nsubj", "conj", "obj", "obl", "root"]): # and (syntactic_result[
+        if (syntactic_result['dependencies'][i][2] in ["nmod", "nsubj", "conj", "obj", "obl",
+                                                       "root"]):  # and (syntactic_result[
             # 'pos']['pos'][i] != 'PROPN'):
             keywords.append(syntactic_result['tokens'][i])
 
     for i in range(len(keywords)):
         translator = google_translator()
-        temp = translator.translate(keywords[i], lang_src='hindi')
-        keywords[i] = [temp.lower().strip()]
+        hindi_temp = keywords[i]
+        temp = translator.translate(hindi_temp, lang_src='hindi')
+        keywords[i] = []
+        keywords[i].append(hindi_temp)
         for synset in wordnet.synsets(temp.lower().strip()):
             for lemma in synset.lemmas():
                 for synonym in lemma.name().split('_'):
                     keywords[i].append(synonym.lower().strip())
-    print(keywords)
+
     # for i in range(len(syntactic_result['pos'])):
     #     if syntactic_result['pos']['pos'][i] == 'PROPN':
     #         keywords.append(syntactic_result['pos']['word'][i])

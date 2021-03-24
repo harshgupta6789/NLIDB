@@ -1,18 +1,11 @@
-from django.shortcuts import render
-
-from django.http import HttpResponse
-from django.shortcuts import get_object_or_404
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from django.db import models
-from .models import Database
-from .serializers import DatabaseSerializer
-import urllib.parse
-from .nlp.nlidb import *
-
 import os
+import urllib.parse
 from pathlib import Path
+
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from .nlp.nlidb import *
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
@@ -37,7 +30,7 @@ class DatabaseAPI(APIView):
 
         try:
             result = perform_nlidb(hindi_sentence)
-        except:
+        except RuntimeError:
             result = {'error': "Unexpected Error Occurred"}
 
         if "error" not in result:
