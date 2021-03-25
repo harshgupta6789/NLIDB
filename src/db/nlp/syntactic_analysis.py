@@ -84,6 +84,7 @@ def syntactic_analyser(query):
         dependencies.append((dep[2].text, dep[0].id, dep[1]))
 
     # map to karaka relations
+    print(dependencies)
     return {
         "query": query,
         "tokens": tokens,

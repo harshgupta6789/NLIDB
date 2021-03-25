@@ -24,9 +24,9 @@ def semantic_analyser(syntactic_result):
     # finding keywords and their synonyms
     keywords = []
     for i in range(len(syntactic_result["dependencies"])):
-        if (syntactic_result['dependencies'][i][2] in ["nmod", "nsubj", "conj", "obj", "obl",
-                                                       "root"]):  # and (syntactic_result[
-            # 'pos']['pos'][i] != 'PROPN'):
+        if syntactic_result['dependencies'][i][2] in ["nmod", "nsubj", "conj", "obj", "obl", "root"]:  # and
+            # syntactic_result[
+            # 'pos']['pos'][i] != 'PROPN':
             keywords.append(syntactic_result['tokens'][i])
 
     for i in range(len(keywords)):
@@ -35,6 +35,7 @@ def semantic_analyser(syntactic_result):
         temp = translator.translate(hindi_temp, lang_src='hindi')
         keywords[i] = []
         keywords[i].append(hindi_temp)
+        keywords[i].append(temp.lower().strip())
         for synset in wordnet.synsets(temp.lower().strip()):
             for lemma in synset.lemmas():
                 for synonym in lemma.name().split('_'):
