@@ -24,10 +24,22 @@ def semantic_analyser(syntactic_result):
     # finding keywords and their synonyms
     keywords = []
     for i in range(len(syntactic_result["dependencies"])):
-        if syntactic_result['dependencies'][i][2] in ["nmod", "nsubj", "conj", "obj", "obl", "root"]:  # and
-            # syntactic_result[
-            # 'pos']['pos'][i] != 'PROPN':
+        if syntactic_result['dependencies'][i][2] == "nmod":
             keywords.append(syntactic_result['tokens'][i])
+        elif syntactic_result['dependencies'][i][2] == "nsubj":
+            keywords.append(syntactic_result['tokens'][i])
+        elif syntactic_result['dependencies'][i][2] == "conj":
+            keywords.append(syntactic_result['tokens'][i])
+        elif syntactic_result['dependencies'][i][2] == "obj":
+            keywords.append(syntactic_result['tokens'][i])
+        elif syntactic_result['dependencies'][i][2] == "obl":
+            keywords.append(syntactic_result['tokens'][i])
+        elif syntactic_result['dependencies'][i][2] == "root":
+            keywords.append(syntactic_result['tokens'][i])
+        # if syntactic_result['dependencies'][i][2] in ["nmod", "nsubj", "conj", "obj", "obl", "root"]:  # and
+        #     # syntactic_result[
+        #     # 'pos']['pos'][i] != 'PROPN':
+        #     keywords.append(syntactic_result['tokens'][i])
 
     for i in range(len(keywords)):
         translator = google_translator()

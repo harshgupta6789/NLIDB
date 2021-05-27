@@ -15,8 +15,7 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 class DatabaseAPI(APIView):
 
     def get(self, request):
-        # database = Database.objects.all()
-        # serializer = DatabaseSerializer(database, many=True)
+
         hindi_sentence = self.request.query_params.get('query')
 
         if hindi_sentence is None:
