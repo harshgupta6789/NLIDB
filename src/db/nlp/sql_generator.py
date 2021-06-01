@@ -153,7 +153,7 @@ def select(query_type, semantic_result, meta_data, conn):
     if len(where.keys()) != 0:
         statement = statement + "WHERE "
         for value in where.keys():
-            statement = statement + "LOWER(" + where[value][1] + "." + where[value][0] + ") LIKE '%" + value + "%' OR "
+            statement = statement + "LOWER(" + where[value][1] + "." + where[value][0] + ") LIKE '%" + str(value) + "%' OR "
         statement = statement[:-4]
 
     cursor.execute(statement)
